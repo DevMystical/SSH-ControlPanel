@@ -8,13 +8,16 @@ from datetime import datetime
 DEBUG_RAISE_ERRORS = False
 DATABASE_LOCATION  = "database/Data.db"
 
-SSH_PORT		   = 7000
+SSH_PORT           = 13333
 MAX_CONNECTIONS    = 50
+PUBLIC_SSH_BANNER  = "SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.1"
 
 database_schemas = {
 	"users": "CREATE TABLE users (username VARCHAR(255), password VARCHAR(255))"
 }
 needed_folders = []
+
+start_time = time.perf_counter()
 
 class LogType:
 	INFO	= "\033[0m", 		  "INFO"
@@ -23,7 +26,7 @@ class LogType:
 
 def log(message, user=None, ip=None, type=LogType.INFO):
 	current_time = datetime.now().strftime("\033[0m(%I:%M:%S %p - %m/%d/%Y) ")
-	if user == None or ip == None:
+	if not user == None and not ip == None:
 		print(current_time + f"[ {type[0] + type[1]}\033[0m - " + type[0] + user + "@" + ip + "\033[0m ] [" + type[0] + message + "\033[0m]")
 	else:
 		print(current_time + f"[ {type[0] + type[1]}\033[0m ] [" + type[0] + message + "\033[0m]")
@@ -32,7 +35,7 @@ os.system("cls" if os.name == "nt" else "clear")
 
 if DEBUG_RAISE_ERRORS:
 	log("!!! Working in development mode, raising errors when they come up !!!", type=LogType.WARNING)
-	log("!!!		> Do not use this in a production environment. <	   !!!", type=LogType.WARNING)
+	log("!!!        > Do not use this in a production environment. <       !!!", type=LogType.WARNING)
 
 HOST_KEY = None
 ENCODING = "UTF-8"
@@ -242,6 +245,7 @@ class SSHControlPanelClient(threading.Thread):
 	def process_ssh_client(self):
 		self.transport = paramiko.Transport(self.sock)
 		self.transport.add_server_key(HOST_KEY)
+		self.transport.local_version = PUBLIC_SSH_BANNER
 		self.server = SSHServerEmulator()
 		try:
 			self.transport.start_server(server=self.server)
@@ -303,7 +307,6 @@ class SSHControlPanelClient(threading.Thread):
 			def _clear():
 				self.clear_terminal()
 
-
 			@command("Add a new user to the system", ["adduser", "useradd", "newuser"], PermissionsLevel.ROOT)
 			def _adduser():
 				new_username = self.prompt("\r Username: ")
@@ -335,19 +338,6 @@ class SSHControlPanelClient(threading.Thread):
 						return CommandReturnAction.BREAK
 				except:
 					self.send(" Please give either 'y' or 'n' as a choice.\r\n")
-
-			@command("View a list of the currently registered users", ["listusers", "userlist", "users"], PermissionsLevel.ROOT)
-			def _listusers():
-				user_data = self.database.get_user_list()
-				table_string = get_display_table(["Username", "Last Login Time", "Last IP", "Last Port"], user_data)
-				for line in table_string.split("\n"):
-					self.send(line + "\r\n")
-
-			@command("View a list of currently connected clients", ["onlinelist", "connectedusers", "onlineusers"], PermissionsLevel.ROOT)
-			def _onlinelist():
-				table_string = get_display_table(["Session ID", "Username", "Connected From", "Session Start"], self.database.get_connected_client_information())
-				for line in table_string.split("\n"):
-					self.send(line + "\r\n")
 
 			@command("Change the password of a user", ["updatepassword", "userpassword"], PermissionsLevel.ROOT)
 			def _updatepassword():
@@ -446,22 +436,21 @@ class SSHControlPanelClient(threading.Thread):
 				buffer_len = len(scroll_history[history_pos])
 				# If we are showing more than one letter of the first word of an input
 				if buffer_len > 0 and len(scroll_history[history_pos].split(" ")) == 1:
-					if not currently_showing_command_syntax:
-						preview_autocomplete_options = self.get_matching_autocomplete_options(scroll_history[history_pos], auto_complete_options)
-						# If there is a valid item to show, render it. Do not render if the user's input perfectly matches the first command
-						if len(preview_autocomplete_options) > 0 and not preview_autocomplete_options[0] == scroll_history[history_pos]:
-							currently_showing_autocomplete_preview = True
-							option_to_display = preview_autocomplete_options[0][len(scroll_history[history_pos]):]
-							self.chan.send(f"\x1b[0K\x1b[90m{option_to_display}\x1b[0m\x1b[{len(option_to_display)}D")
-						# If there is a perfect match or the command no longer matches any option
-						elif currently_showing_autocomplete_preview:
-							currently_showing_autocomplete_preview = False
-							self.chan.send("\x1b[0K")
+					preview_autocomplete_options = self.get_matching_autocomplete_options(scroll_history[history_pos], auto_complete_options)
+					# If there is a valid item to show, render it. Do not render if the user's input perfectly matches the first command
+					if len(preview_autocomplete_options) > 0 and not preview_autocomplete_options[0] == scroll_history[history_pos]:
+						currently_showing_autocomplete_preview = True
+						option_to_display = preview_autocomplete_options[0][len(scroll_history[history_pos]):]
+						self.chan.send(f"\x1b[0K\x1b[90m{option_to_display}\x1b[0m\x1b[{len(option_to_display)}D")
+					# If there is a perfect match or the command no longer matches any option
+					elif currently_showing_autocomplete_preview:
+						currently_showing_autocomplete_preview = False
+						self.chan.send("\x1b[0K")
 				# If the user deletes everything, disable previewing
 				elif currently_showing_autocomplete_preview:
 					currently_showing_autocomplete_preview = False
 				# Only clear the line of no previews are being shown
-				if not currently_showing_autocomplete_preview and not currently_showing_command_syntax:
+				if not currently_showing_autocomplete_preview:
 					self.chan.send("\x1b[0K")
 				# /\/\/\ End of the pre-character rendering portion /\/\/\
 
@@ -510,7 +499,7 @@ class SSHControlPanelClient(threading.Thread):
 				elif char == b"\x1b[A":
 					# If we can move to the next item in the history list
 					if len(scroll_history) > history_pos + 1:   
-						currently_showing_command_syntax, currently_showing_autocomplete_preview = check_and_clear_invalid_characters(currently_showing_command_syntax, currently_showing_autocomplete_preview)
+						currently_showing_autocomplete_preview = check_and_clear_invalid_characters(currently_showing_autocomplete_preview)
 						# Move forward in the history, set the character position, and send the history item
 						history_pos += 1
 						char_pos = len(scroll_history[history_pos])
@@ -520,14 +509,14 @@ class SSHControlPanelClient(threading.Thread):
 				elif (char == b"\x1b[B" or char == b"\x1b"):
 					# If we are not at the very first item
 					if not history_pos == 0:
-						currently_showing_command_syntax, currently_showing_autocomplete_preview = check_and_clear_invalid_characters(currently_showing_command_syntax, currently_showing_autocomplete_preview)
+						currently_showing_autocomplete_preview = check_and_clear_invalid_characters(currently_showing_autocomplete_preview)
 						# Move backwards in the history. If escape is pressed when you are at a non-zero history
 						# index, return to the very first item.
 						history_pos -= history_pos if char == b"\x1b" else 1
 						char_pos = len(scroll_history[history_pos])
 						self.chan.send(scroll_history[history_pos])
 					elif char == b"\x1b":
-						currently_showing_command_syntax, currently_showing_autocomplete_preview = check_and_clear_invalid_characters(currently_showing_command_syntax, currently_showing_autocomplete_preview)
+						currently_showing_autocomplete_preview = check_and_clear_invalid_characters(currently_showing_autocomplete_preview)
 						# Since we are already at index 0, make the line blank
 						scroll_history[0] = ""
 						history_pos = 0
@@ -539,9 +528,7 @@ class SSHControlPanelClient(threading.Thread):
 					continue
 
 				currently_viewing_autocomplete = False
-				# Clear attack syntax when the user presses enter
-				if char == b"\r" and currently_showing_command_syntax:
-					self.chan.send("\x1b[0K")
+				# Clear autocomplete preview when the user presses enter
 				if char == b"\r" and currently_showing_autocomplete_preview:
 					self.chan.send("\x1b[0K")
 				# Do not add the character if the user is pressing enter with a blank input
@@ -605,3 +592,43 @@ class SSHControlPanelClient(threading.Thread):
 		except:
 			pass
 		sys.exit()
+
+def main():
+	check_and_create_files()
+
+	log("Loading SSH Host Key")
+	if not os.path.exists("keys/private.key"):
+		log("No SSH Host Key file was found, regenerated file at keys/private.key", type=LogType.WARNING)
+		open("keys/private.key", "a+").close()
+	global HOST_KEY
+	try:
+		HOST_KEY = paramiko.RSAKey(filename="keys/private.key")
+	except:
+		log("Your SSH Host Key is invalid, please add a valid key to keys/private.key", type=LogType.ERROR)
+		log("You can regenerate one (On MacOS and Linux) using: [ssh-keygen -t rsa -m PEM -f keys/private.key]")
+		raise KeyboardInterrupt
+
+	log(f"Server initialization completed in {round(time.perf_counter() - start_time, 3)} seconds")
+	log("Listening for connections from clients")
+	while True:
+		sock, addr = s.accept()
+		log(f"Accepted a connection from {addr[0]}:{addr[1]}, starting new server thread")
+		global session_id
+		db_access_lock.acquire()
+		log(f"Assigned connection from {addr[0]}:{addr[1]} to Session ID {session_id}")
+		session_id += 1
+		db_access_lock.release()
+		try:
+			SSHControlPanelClient(sock, addr, session_id - 1).start()
+		except:
+			if DEBUG_RAISE_ERRORS:
+				raise
+
+try:
+	main()
+except KeyboardInterrupt:
+	print("\033[F")
+	log("Interrupt detected, shutting down program")
+	connection.close()
+	log("Closed SSH listener connection")
+	log(f"Shutting down server after {format_seconds_to_time(round(time.perf_counter() - start_time))}")
