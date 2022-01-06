@@ -188,4 +188,31 @@ The preinitialization stage defines general-purpose functions like `log` and `lo
 
 The driver code for the entire program is located inside of a `if __name__ == "__main__"` block as well as a `try/except` statement which listens for `KeyboardInterrupt` to allow for graceful shutdowns and properly closed sockets. When a `KeyboardInterrupt` is detected the listener socket is shut down and the program prints its uptime. The `try/except` block calls `main()` which performs the actual initialization.
 
-### Client Thread
+First, the `main()` method will call the `check_and_create_files()` function which will create the necessary files and folders. If you need to create folders, files, configuration files, databases, and anything that will later be required for initialization, you should do it inside of that function. Once that funciton is called, the program checks for the presence of the file `keys/private.key` and causes an error if it is not present. The Host Key is loaded...
+
+```py
+HOST_KEY = paramiko.RSAKey(filename="keys/private.key")
+```
+
+...and then the custom initialization begins. Once the program has been set up, initialization is complete and the server can begin accepting connections. Inside of the `while True`, client sockets are created. The threading lock `db_access_lock` is acquired to allow for the global variable `session_id` to be incremented properly in case of conflicting connections, although that is very unlikely. A new instance of `SSHControlPanelClient` is created with the socket, the address, and the new Session ID. Because `SSHControlPanelClient` is a subclass of `threading.Thread`, it is started and `main()` listens for another connection. The creation of the client thread is surrounded by a `try/except` which will only raise a fatal error if `DEBUG_RAISE_ERRORS` is set to `True`. All other errors may be documented but will be handled in a controlled manner.
+
+### Client Backend Initialization
+
+The client is initialized with the following code, which contains most of the essential variables that will be used throughout the client class:
+
+```py
+threading.Thread.__init__(self, daemon=True)
+self.sock = sock
+self.address = address
+self.ip = f"{address[0]}:{address[1]}"
+self.database = None
+self.kill_socket_immediately = True
+self.session_id = session_id
+self.transport = None
+```
+
+The socket, address, and session_id are set for use within the class. `self.ip` is a formatted version of the address which is used whenever it must be displayed. The `database` and `transport` are set to `None` so they can be redefined later. `database` especially needs to be set to `None` so that if an error occurs during initialization, the logs will display "Not Logged In". (Technically, this will only happen when the `database.user` attribute is `None`, and this value is assigned as soon as the user it authenticated.) There is a variable called `connected_clients` which is previously defined, and it contains a list of all of the users who are currently logged in. `kill_socket_immediately` is set to `True`, which tells the program that if an error occurs, the user should not be removed from this list and the connection should simply be dropped.
+
+The `run()` function contains a `try/except` block which acts as the global error handler for all client activities, and calls the class method `process_ssh_client()`. If it is any random error, its stack trace is printed to the console and the client is sent the apology message stored in `FATAL_ERROR`. If the error is a `ModuleNotFoundError`, then it indicates an issue with the SSH Server Emulator's connection process and does not need to be printed as a stack trace. If `kill_socket_immediately` is set to `True`, then the class method `kill_connection()` is called, which ends the connection instantly. If `kill_socket_immediately` is set to `False`, then `abort_connection()` is called which removes the client from the list of connected users and then goes on to call `kill_connection()`.
+
+### Client Frontend
