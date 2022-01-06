@@ -2,6 +2,33 @@
 
 SSH Control Panel is a fully customizable framework for creating SSH based control panels to control your projects. It enables the creation of custom commands, custom database functions, and can easily be edited to add as many features as you require.
 
+## Configuration Options
+
+
+
+## Default Commands
+
+The following commands come with the server by default and it is recommended that they remain unchanged unless you are editing the messages or prompts.
+
+| Command | Aliases | Description | Permissions Level |
+| --- | --- | --- | --- |
+| `clear` | `cls`, `c` | Clears the client's terminal window. | All users (`PermissionsLevel.NORMAL`) |
+| `adduser` | `useradd`, `newuser` | Brings up prompts to add a new normal user. Does not permit the creation of accounts with duplicate usernames. | Root only (`PermissionsLevel.ROOT`) |
+| `removeuser` | `userremove`, `remove`, `deluser` | Brings up prompts to delete a user given a username. | Root only (`PermissionsLevel.ROOT`) |
+| `rootpassword` | `rootpass`, `rootregen` | Regenerates the root login credentials. Asks the user to confirm that they want to do this. The root password is changed, logged, and the user is forced to log back in with the new credentials. | Root only (`PermissionsLevel.ROOT`) |
+| `updatepassword` | `userpassword` | Brings up prompts to change the password of an existing normal account. | Root only (`PermissionsLevel.ROOT`) |
+| `logout` | `exit`, `disconnect`, `dc` | Ends the client's current session and logs them out. | All users (`PermissionsLevel.NORMAL`) |
+
+## Included Classes Overview
+
+These classes are included as enums which represent various constants.
+
+| Class Name | Description | Values |
+| --- | --- | --- |
+| `LogType` | Contains three different levels for logging, each of which is a tuple containing an ANSI color and a string with the level name. | `INFO`, `WARNING`, `ERROR` |
+| `CommandReturnAction` | Specifies what should be done after a command is done executing. Except for very specific cases, only one value is required which instructs the server to disconnect the client who executed the command. | `BREAK` |
+| `PermissionsLevel` | Constant to describe what type of user a client is. By default, permissions is only based on if the account's username is `root` but can be modified for more complex user hierarchies. | `NORMAL`, `ROOT` |
+
 ## Available Functions
 
 The following functions are available at any place in the code. Note that their definitions may need to be re-arranged depending on what code you run when the server starts.
@@ -35,3 +62,5 @@ These functions are available within the client class and provide simple functio
 | `yes_no_prompt(self, prompt_text: str) -> bool / Exception()` | Function to display a yes/no choice to the client. `prompt_text` is not padded and thus must contain necessary newline characters and carriage returns. If the user gave a valid choice, it will return either `True` or `False`. Must be placed inside of a `try/except` block to handle invalid inputs. |
 | `prompt(self, prompt_text: str, auto_complete_options: list = None) -> str` | Function to get a string input from the client. `prompt_text` is not padded and thus must contain necessary newline characters and carriage returns. `auto_complete_options` is an optional `list` of strings that contains a list of possibilities that can be auto-completed. |
 | `clear_terminal(self) -> None` | Clears the client's screen. |
+
+## Custom Code
