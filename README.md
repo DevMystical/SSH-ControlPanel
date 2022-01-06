@@ -173,4 +173,4 @@ This block of code will be called immediately following the creation of all of t
 
 ### Other Code Locations
 
-Obviously, these four locations are not the only places where you may insert your own code to make the framework fit your needs. However, if you wish to deviate from these areas then it is recommended that you fully read through the program and understand its flow so you can properly place code. As a rule of thumb, when working with the client thread, you should wait until after the user is authenticated to run code that does work for a specific.
+Obviously, these four locations are not the only places where you may insert your own code to make the framework fit your needs. However, if you wish to deviate from these areas then it is recommended that you fully read through the program and understand its flow so you can properly place code. As a rule of thumb, when working with the client thread, you should wait until after the user is authenticated to run code that does work for a specific user.
