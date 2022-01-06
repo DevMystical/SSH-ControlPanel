@@ -1,6 +1,13 @@
 # SSH-ControlPanel
 
-SSH Control Panel is a fully customizable framework for creating SSH based control panels to control your projects. It enables the creation of custom commands, custom database functions, and can easily be edited to add as many features as you require.
+SSH Control Panel is a fully customizable framework for creating SSH based control panels to control your projects. It enables the creation of custom commands, custom database functions, and can easily be edited to add as many features as you require. If you have a question, please read this entire file before creating an issue. Thank you, and enjoy!
+
+Contents:
+1. Configuration Options
+2. Default Commands
+3. Included Classes
+4. Available Functions
+5. Custom Code
 
 ## Configuration Options
 
@@ -58,7 +65,7 @@ The following commands come with the server by default and it is recommended tha
 | `updatepassword` | `userpassword` | Brings up prompts to change the password of an existing normal account. | Root only (`PermissionsLevel.ROOT`) |
 | `logout` | `exit`, `disconnect`, `dc` | Ends the client's current session and logs them out. | All users (`PermissionsLevel.NORMAL`) |
 
-## Included Classes Overview
+## Included Classes
 
 These classes are included as enums which represent various constants.
 
@@ -100,6 +107,70 @@ These functions are available within the client class and provide simple functio
 | --- | --- |
 | `yes_no_prompt(self, prompt_text: str) -> bool / Exception()` | Function to display a yes/no choice to the client. `prompt_text` is not padded and thus must contain necessary newline characters and carriage returns. If the user gave a valid choice, it will return either `True` or `False`. Must be placed inside of a `try/except` block to handle invalid inputs. |
 | `prompt(self, prompt_text: str, auto_complete_options: list = None) -> str` | Function to get a string input from the client. `prompt_text` is not padded and thus must contain necessary newline characters and carriage returns. `auto_complete_options` is an optional `list` of strings that contains a list of possibilities that can be auto-completed. |
+| `send(self, message: str) -> None` | Sends the string `message` to the client. For messages that are multiple lines, they will be split apart into multiple buffers and sent to the client in the correct format without exceeding outgoing socket limits. |
 | `clear_terminal(self) -> None` | Clears the client's screen. |
 
 ## Custom Code
+
+There are four different locations in the program where code can be conveniently added to meet your needs.
+
+### Custom Functions and Variables
+
+Here you can define functions or variables that are required for your project to operate. Avoid making direct calls that access databases or files/folders, because at this point they have not been created yet. Wait until the section labeled "Custom Initialization Code" to call functions which you define in this space.
+
+### Custom Database Functions
+
+In this section you can define any functions relating to your database as well as file management and logging. Any class methods placed here which access your database must use the following style:
+
+```py
+@database_access()
+def function(*args, **kwargs):
+    # FUNCTION BODY
+```
+
+When this decorator is used, the database can be accessed in a unique way. Typically, when using the `sqlite3` library, you have to create a new cursor, execute a statement with the cursor, commit any changes made, and then close the cursor object. The `database_access` decorator simplifies this process. When a function is surrounded with it, a global cursor object will be updated. All threads will be locked preventing database conflicts (this shouldn't happen anyways but it can be helpful for file editing and various other applications). Once the function is done executing, any changes will be committed and execution of the client's thread can continue. An example of its use can be found in other simple database functions:
+
+```py
+@database_access()
+def remove_user(self, username):
+    cursor.execute("DELETE FROM users WHERE username=?", (username,))
+```
+
+For methods meant to make life easier within the database class, for example, a function that is called to perform a statement that must be repeated frequently in many different functions, a protected function should be created and does not need the `database_access` decorator. However, you may still use the same shortcuts as other database functions, like so:
+
+```py
+def __user_exists(self, username):
+    return cursor.execute("SELECT count(*) FROM users WHERE username=?", (username,)).fetchone()[0] == 1
+```
+
+### Custom Commands
+
+One of the most robust and useful tools that this framework offers are flexible custom commands. Custom commands must go in the designated section, denoted by comments, in order to work properly. The function name for the command can be whatever you would like, although it is best practice to make it the first name of the command with an underscore before it. Commands can be defined in the following way:
+
+```py
+@command("Description of the command", ["main_name", "alias1", "alias2", *])
+def _mycommand():
+    # FUNCTION BODY
+```
+
+By default, a command defined in this way will be accesible by all users. To prevent this and restrict access to only the root user, define the command like this:
+
+```py
+@command("Description of the command", ["main_name", "alias1", "alias2", *], PermissionsLevel.ROOT)
+```
+
+Be sure to always double check and make sure that dangerous commands or administrative commands are restricted to the root user. Additionally, the function name has no influence on the final command, so make sure that there is at least one string in the list of aliases. Although there is currently only one command result that cannot be handled within the command's function (`CommandReturnAction.BREAK`), there is a possibility that you could require additional actions in the future. However, most things will work within the function, aside from calls like `break`. If this functionality is necessary, return an action at the end of the function like so:
+
+```py
+return CommandReturnAction.BREAK
+```
+
+Commands do not currently support directly taking in arguments from the command line, so prompts must be used to input data.
+
+### Custom Initialization Code
+
+This block of code will be called immediately following the creation of all of the requisite folders and files and the loading of the SSH Host Key. Here, any functions that you defined in your **Custom Functions and Variables** section should be called to get your code and data ready for users to access it.
+
+### Other Code Locations
+
+Obviously, these four locations are not the only places where you may insert your own code to make the framework fit your needs. However, if you wish to deviate from these areas then it is recommended that you fully read through the program and understand its flow so you can properly place code. As a rule of thumb, when working with the client thread, you should wait until after the user is authenticated to run code that does work for a specific.
