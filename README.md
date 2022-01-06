@@ -42,7 +42,7 @@ needed_folders     = []
 | `COMMAND_PROHIBITED` | Message for when the user does not have permission to use a command. |
 | `COMMAND_FAILED` | Message for if a command causes a non-fatal error. |
 | `FATAL_ERROR` | Apology message to be shown to a user who induced a fatal error in their client thread. Hopefully the user never has to see this. |
-| `database_schemas` | List of database tables that your project requires. Do not touch the `users` table without adding necessary parameters to the part of the program where the default root credentials are created and added to the table. |
+| `database_schemas` | Dictionary of database table creation statements that your project requires. Tables will not be created again if they already exist so no Do not touch the `users` table without adding necessary parameters to the part of the program where the default root credentials are created and added to the table. |
 | `needed_folders` | List of folders for assets and resources that your program requires. The list is empty by default but should include strings which are valid folder names. Additional code is required to create sub-folders or default files, and this code should go inside of the `check_and_create_files()` function. |
 
 ## Default Commands
