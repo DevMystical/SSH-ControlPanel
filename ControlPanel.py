@@ -655,11 +655,12 @@ def main():
 			if DEBUG_RAISE_ERRORS:
 				raise
 
-try:
-	main()
-except KeyboardInterrupt:
-	print("\033[F")
-	log("Interrupt detected, shutting down program")
-	connection.close()
-	log("Closed SSH listener connection")
-	log(f"Shutting down server after {format_seconds_to_time(round(time.perf_counter() - start_time))}")
+if __name__ == "__main__":
+	try:
+		main()
+	except KeyboardInterrupt:
+		print("\033[F")
+		log("Interrupt detected, shutting down program")
+		connection.close()
+		log("Closed SSH listener connection")
+		log(f"Shutting down server after {format_seconds_to_time(round(time.perf_counter() - start_time))}")

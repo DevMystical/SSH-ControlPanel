@@ -8,6 +8,7 @@ Contents:
 3. Included Classes
 4. Available Functions
 5. Custom Code
+6. Overview of the Entire Program
 
 ## Configuration Options
 
@@ -148,7 +149,7 @@ def __user_exists(self, username):
 One of the most robust and useful tools that this framework offers are flexible custom commands. Custom commands must go in the designated section, denoted by comments, in order to work properly. The function name for the command can be whatever you would like, although it is best practice to make it the first name of the command with an underscore before it. Commands can be defined in the following way:
 
 ```py
-@command("Description of the command", ["main_name", "alias1", "alias2", *])
+@command("Description of the command", ["main_name", "alias1", "alias2", ...])
 def _mycommand():
     # FUNCTION BODY
 ```
@@ -156,7 +157,7 @@ def _mycommand():
 By default, a command defined in this way will be accesible by all users. To prevent this and restrict access to only the root user, define the command like this:
 
 ```py
-@command("Description of the command", ["main_name", "alias1", "alias2", *], PermissionsLevel.ROOT)
+@command("Description of the command", ["main_name", "alias1", "alias2", ...], PermissionsLevel.ROOT)
 ```
 
 Be sure to always double check and make sure that dangerous commands or administrative commands are restricted to the root user. Additionally, the function name has no influence on the final command, so make sure that there is at least one string in the list of aliases. Although there is currently only one command result that cannot be handled within the command's function (`CommandReturnAction.BREAK`), there is a possibility that you could require additional actions in the future. However, most things will work within the function, aside from calls like `break`. If this functionality is necessary, return an action at the end of the function like so:
@@ -174,3 +175,17 @@ This block of code will be called immediately following the creation of all of t
 ### Other Code Locations
 
 Obviously, these four locations are not the only places where you may insert your own code to make the framework fit your needs. However, if you wish to deviate from these areas then it is recommended that you fully read through the program and understand its flow so you can properly place code. As a rule of thumb, when working with the client thread, you should wait until after the user is authenticated to run code that does work for a specific user.
+
+## Overview of the Entire Program
+
+This is a detailed explanation of the way that the program works, so that if you need to heavil modify the code for your own needs, you can do so. The code explanation is split up in the order that the code is executed.
+
+### Preinitialization
+
+The preinitialization stage defines general-purpose functions like `log` and `log_to_file`, defines constants, opens and initializes the listening socket, and defines enum constants. It is fairly simple to read through and is everything up to the start of the `CommandReturnAction` class. There is not really any reason to edit code outside of the designated area unless you need to change the way that the socket is initialized or general functions.
+
+### Initialization and Listening
+
+The driver code for the entire program is located inside of a `if __name__ == "__main__"` block as well as a `try/except` statement which listens for `KeyboardInterrupt` to allow for graceful shutdowns and properly closed sockets. When a `KeyboardInterrupt` is detected the listener socket is shut down and the program prints its uptime. The `try/except` block calls `main()` which performs the actual initialization.
+
+### Client Thread
