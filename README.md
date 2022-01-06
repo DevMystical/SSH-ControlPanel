@@ -4,7 +4,46 @@ SSH Control Panel is a fully customizable framework for creating SSH based contr
 
 ## Configuration Options
 
+Configuration options can be found at the start of the program and have the following values by default:
 
+```py
+DEBUG_RAISE_ERRORS = False
+DATABASE_LOCATION  = "database/Data.db"
+
+SSH_PORT           = 13333
+MAX_CONNECTIONS    = 50
+PUBLIC_SSH_BANNER  = "SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.1"
+
+TERMINAL_TITLE_BAR = "Project Name >> [$user] - Connected from [$ip] - Session ID [$sid]"
+WELCOME_MESSAGE    = " Welcome, $user"
+LOGIN_FAILED       = " Incorrect login credentials, please connect again.\r\n"
+COMMAND_UNKNOWN    = "\r Command '$command' not found.\r\n"
+COMMAND_PROHIBITED = "\r You do not have permission to execute '$command'. This is reserved for the root user. If you believe this is an error, please contact the system administrator.\r\n"
+COMMAND_FAILED     = "\r There was an error executing your command. Please try again later or contact the system administrator.\r\n"
+FATAL_ERROR        = "\r\n You have been disconnected due to a fatal error. We apologize for any inconvenience.\r\n"
+
+database_schemas   = {
+	"users": "CREATE TABLE users (username VARCHAR(255), password VARCHAR(255))"
+}
+needed_folders     = []
+```
+
+| Value | Description |
+| --- | --- |
+| `DEBUG_RAISE_ERRORS` | Set to `True` if you would like to be shown full stack traces of errors that would normally be excepted and result in a client disconnect. Not to be used in production environments. |
+| `DATABASE_LOCATION` | The path where the database should be created. If you change the folder name, then it must also be changed later in the program (around line 100) when the `needed_folders` variable is updated. Should be `folder_name/database_name.db`. |
+| `SSH_PORT` | The port that users must connect to in order to access the server. |
+| `MAXIMUM_CONNECTIONS` | The number of simultaneous connections that should be listened for at one time. |
+| `PUBLIC_SSH_BANNER` | Banner to be displayed publicly. Should typically be left alone. |
+| `TERMINAL_TITLE_BAR` | The text that will appear in the top bar of the terminal of users. Supports placeholders for `$user`, `$ip`, and `$sid` (Session ID) |
+| `WELCOME_MESSAGE` | Message that will be displayed to the user for two seconds before continuing to the command line interface. |
+| `LOGIN_FAILED` | Message for if the user does not give the correct credentials. |
+| `COMMAND_UNKNOWN` | Message for when the user gives a command that is not valid. |
+| `COMMAND_PROHIBITED` | Message for when the user does not have permission to use a command. |
+| `COMMAND_FAILED` | Message for if a command causes a non-fatal error. |
+| `FATAL_ERROR` | Apology message to be shown to a user who induced a fatal error in their client thread. Hopefully the user never has to see this. |
+| `database_schemas` | List of database tables that your project requires. Do not touch the `users` table without adding necessary parameters to the part of the program where the default root credentials are created and added to the table. |
+| `needed_folders` | List of folders for assets and resources that your program requires. The list is empty by default but should include strings which are valid folder names. Additional code is required to create sub-folders or default files, and this code should go inside of the `check_and_create_files()` function. |
 
 ## Default Commands
 
