@@ -648,9 +648,10 @@ def main():
 		db_access_lock.acquire()
 		log(f"Accepted a connection from {addr[0]}:{addr[1]}, starting new server thread with Session ID {session_id}")
 		session_id += 1
+		local_session_id = session_id
 		db_access_lock.release()
 		try:
-			SSHControlPanelClient(sock, addr, session_id - 1).start()
+			SSHControlPanelClient(sock, addr, local_session_id - 1).start()
 		except:
 			if DEBUG_RAISE_ERRORS:
 				raise
