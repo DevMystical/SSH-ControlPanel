@@ -145,6 +145,14 @@ def format_seconds_to_time(time_int):
 	d, h = divmod(h, 24)
 	return f"{d:d}d {h:d}h {m:d}m {s:d}s"
 
+# ----- START OF CUSTOM FUNCTIONS AND VARIABLES ----- #
+
+
+
+
+
+# -----  END OF CUSTOM FUNCTIONS AND VARIABLES  ----- #
+
 class CommandReturnAction:
 	BREAK = 0
 
@@ -184,7 +192,6 @@ class SSHPanelDatabase:
 	def remove_user(self, username):
 		cursor.execute("DELETE FROM users WHERE username=?", (username,))
 
-	@database_access()
 	def log_login(self, username, ip, port):
 		log_to_file(f"User logged in: '{username}' from {ip}:{port}", "logins.log")
 
@@ -198,6 +205,8 @@ class SSHPanelDatabase:
 		return cursor.execute("SELECT count(*) FROM users WHERE username=?", (username,)).fetchone()[0] == 1
 
 	# ----- START OF CUSTOM DATABASE FUNCTIONS ----- #
+
+
 
 
 
@@ -379,6 +388,8 @@ class SSHControlPanelClient(threading.Thread):
 
 
 
+
+
 			# -----  END OF CUSTOM COMMANDS  ----- #
 
 			command_parts, self.command_history = self.get_input(self.command_history, [n for n in command_functions.keys()], return_updated_history=True)
@@ -387,7 +398,6 @@ class SSHControlPanelClient(threading.Thread):
 			log_to_file(f"Command dispatched by '{username}': {command_parts}", "commands.log")
 			command_parts = command_parts.split(" ")
 			command_item = command_parts[0].lower()
-			args = [] if len(command_parts) <= 1 else command_parts[1:]
 
 			done_executing = False
 			action = None
@@ -623,6 +633,8 @@ def main():
 		raise KeyboardInterrupt
 
 	# ----- START OF CUSTOM INITIALIZATION CODE ----- #
+
+
 
 
 
