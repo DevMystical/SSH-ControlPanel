@@ -2,9 +2,6 @@ import os, datetime, socket, sqlite3, threading, hashlib, paramiko, traceback, r
 from functools import wraps
 from datetime import datetime
 
-# Please carefully go through README.md to ensure that each feature is
-# properly and effecitvely used.
-
 DEBUG_RAISE_ERRORS = False
 DATABASE_LOCATION  = "database/Data.db"
 
@@ -12,10 +9,18 @@ SSH_PORT           = 13333
 MAX_CONNECTIONS    = 50
 PUBLIC_SSH_BANNER  = "SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.1"
 
-database_schemas = {
+TERMINAL_TITLE_BAR = "Project Name >> [$user] - Connected from [$ip] - Session ID [$sid]"
+WELCOME_MESSAGE    = " Welcome, $user"
+LOGIN_FAILED       = " Incorrect login credentials, please connect again.\r\n"
+COMMAND_UNKNOWN    = "\r Command '$command' not found.\r\n"
+COMMAND_PROHIBITED = "\r You do not have permission to execute '$command'. This is reserved for the root user. If you believe this is an error, please contact the system administrator.\r\n"
+COMMAND_FAILED     = "\r There was an error executing your command. Please try again later or contact the system administrator.\r\n"
+FATAL_ERROR        = "\r\n You have been disconnected due to a fatal error. We apologize for any inconvenience.\r\n"
+
+database_schemas   = {
 	"users": "CREATE TABLE users (username VARCHAR(255), password VARCHAR(255))"
 }
-needed_folders = []
+needed_folders     = []
 
 start_time = time.perf_counter()
 
@@ -236,7 +241,7 @@ class SSHControlPanelClient(threading.Thread):
 				for line in traceback.format_exc().strip().split("\n"):
 					log(line, username, self.ip, type=LogType.ERROR)
 				log("Disconnecting client", username, self.ip, type=LogType.ERROR)
-				self.send("\r\n You have been disconnected due to a fatal error. We apologize for any inconvenience.\r\n")
+				self.send(FATAL_ERROR)
 			if self.kill_socket_immediately:
 				self.kill_connection()
 			else:
@@ -280,7 +285,7 @@ class SSHControlPanelClient(threading.Thread):
 			connected_clients.remove([self.session_id, username, self.ip, self.sock])
 			self.kill_socket_immediately = True
 		else:
-			self.send(f" Incorrect login credentials, please connect again.\r\n")
+			self.send(LOGIN_FAILED)
 			time.sleep(2)
 
 		log("Connection was aborted properly", username, self.ip)
@@ -292,7 +297,7 @@ class SSHControlPanelClient(threading.Thread):
 		permissions_level = PermissionsLevel.NORMAL if not username == "root" else PermissionsLevel.ROOT
 
 		while True:
-			title = f'Starlink Connect >> [{username}] - Connected from [{self.ip}] - Session ID [{self.session_id}]'
+			title = TERMINAL_TITLE_BAR.replace("$user", username).replace("$ip", self.ip).replace("$sid", str(self.session_id))
 			self.send(f'\x1b]0;{title}\x07 [{username}@{self.ip}] > ')
 
 			command_functions = {}
@@ -360,12 +365,11 @@ class SSHControlPanelClient(threading.Thread):
 			def _logout():
 				return CommandReturnAction.BREAK
 
+			# ----- USER DEFINED COMMANDS START HERE ----- #
 
 
 
-
-
-
+			# -----  USER DEFINED COMMANDS END HERE  ----- #
 
 			command_parts, self.command_history = self.get_input(self.command_history, [n for n in command_functions.keys()], return_updated_history=True)
 			self.command_history.insert(0, command_parts)
@@ -384,7 +388,7 @@ class SSHControlPanelClient(threading.Thread):
 				if name == command_item:
 					func, description, required_permissions_level = data
 					if required_permissions_level == PermissionsLevel.ROOT and not permissions_level == PermissionsLevel.ROOT:
-						self.send(f"\r You do not have permission to execute '{name}'. This is reserved for the root user. If you believe this is an error, please contact the system administrator.\r\n")
+						self.send(COMMAND_PROHIBITED.replace("$command", name))
 					else:
 						try:
 							action = func()
@@ -392,13 +396,13 @@ class SSHControlPanelClient(threading.Thread):
 							log(f"Non-fatal error in Client Thread: {type(e).__name__}", username, self.ip, type=LogType.WARNING)
 							for line in traceback.format_exc().strip().split("\n"):
 								log(line, username, self.ip, type=LogType.WARNING)
-							self.send("\r There was an error executing your command. Please try again later or contact the system administrator.\r\n")
+							self.send(COMMAND_FAILED)
 					done_executing = True
 			
 			if action == CommandReturnAction.BREAK:
 				break
 			if not done_executing:
-				self.send(f"\r Command '{command_item}' not found.\r\n")
+				self.send(COMMAND_UNKNOWN.replace("$command", command_item))
 
 	def yes_no_prompt(self, prompt_text):
 		self.send(prompt_text)
@@ -538,7 +542,7 @@ class SSHControlPanelClient(threading.Thread):
 
 				self.chan.send(char)
 				scroll_history[history_pos] += char.decode(ENCODING)
-				# Add the length of the character in case people paste things like IPs
+				# Add the length of the character
 				char_pos += len(char)
 				
 			# Take away the '\r' and clean everything up
@@ -572,7 +576,7 @@ class SSHControlPanelClient(threading.Thread):
 				self.kill_connection()
 
 	def clear_terminal(self):
-		self.send("\033[2J\033[1H\033[0m")
+		self.send("\033c\033[3J\033[0m")
 	
 	def get_matching_autocomplete_options(self, current_buffer, options):
 		matches = []
@@ -612,10 +616,9 @@ def main():
 	log("Listening for connections from clients")
 	while True:
 		sock, addr = s.accept()
-		log(f"Accepted a connection from {addr[0]}:{addr[1]}, starting new server thread")
 		global session_id
 		db_access_lock.acquire()
-		log(f"Assigned connection from {addr[0]}:{addr[1]} to Session ID {session_id}")
+		log(f"Accepted a connection from {addr[0]}:{addr[1]}, starting new server thread with Session ID {session_id}")
 		session_id += 1
 		db_access_lock.release()
 		try:
