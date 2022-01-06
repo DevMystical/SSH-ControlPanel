@@ -2,6 +2,12 @@ import os, datetime, socket, sqlite3, threading, hashlib, paramiko, traceback, r
 from functools import wraps
 from datetime import datetime
 
+# Please be sure to carefully read through README.md, as it contains
+# lots of important information on how to implement your project into
+# this SSH Server framework.
+
+# ----- START OF CONFIGURATION ----- #
+
 DEBUG_RAISE_ERRORS = False
 DATABASE_LOCATION  = "database/Data.db"
 
@@ -21,6 +27,8 @@ database_schemas   = {
 	"users": "CREATE TABLE users (username VARCHAR(255), password VARCHAR(255))"
 }
 needed_folders     = []
+
+# -----  END OF CONFIGURATION  ----- #
 
 start_time = time.perf_counter()
 
@@ -111,6 +119,7 @@ def check_and_create_files():
 				log_to_file(f"Updated root credentials: root:{root_password}", "root_passwords.log")
 				cursor.execute("INSERT INTO users VALUES (?, ?)", ("root", create_password_hash(root_password)))
 
+# These two functions are not used in any sample code but are explained in README.md and can be used to create nice looking tables
 def get_display_table(headings: list, data: list) -> str:
 	column_max_lens = [len(format_to_string(title)) for title in headings]
 	for data_set in data:
@@ -124,6 +133,7 @@ def get_display_table(headings: list, data: list) -> str:
 	return "\033[0m" + buffer + "\033[0m"
 
 def format_to_string(item) -> str:
+	# Here you can definie custom rules for how table items are converted into strings
 	if item == None:
 		return "N/A"
 	else:
@@ -140,8 +150,6 @@ class CommandReturnAction:
 
 class PermissionsLevel:
 	NORMAL, ROOT = 0, 1
-
-class CommandUsageError(Exception): pass
 
 class SSHPanelDatabase:
 
@@ -180,18 +188,20 @@ class SSHPanelDatabase:
 	def log_login(self, username, ip, port):
 		log_to_file(f"User logged in: '{username}' from {ip}:{port}", "logins.log")
 
+	# Use this function for external calls that have not already locked all threads
 	@database_access()
 	def user_exists(self, username):
 		return self.__user_exists(username)
 
+	# Use this function strictly for internal database calls from functions that have the @database_access() decorator
 	def __user_exists(self, username):
 		return cursor.execute("SELECT count(*) FROM users WHERE username=?", (username,)).fetchone()[0] == 1
 
-	# ----- START DATABASE FUNCTIONS ----- #
+	# ----- START OF CUSTOM DATABASE FUNCTIONS ----- #
 
 
 
-	# -----  END DATABASE FUNCTIONS  ----- #
+	# -----  END OF CUSTOM DATABASE FUNCTIONS  ----- #
 
 class SSHServerEmulator(paramiko.ServerInterface):
 	
@@ -365,11 +375,11 @@ class SSHControlPanelClient(threading.Thread):
 			def _logout():
 				return CommandReturnAction.BREAK
 
-			# ----- USER DEFINED COMMANDS START HERE ----- #
+			# ----- START OF CUSTOM COMMANDS ----- #
 
 
 
-			# -----  USER DEFINED COMMANDS END HERE  ----- #
+			# -----  END OF CUSTOM COMMANDS  ----- #
 
 			command_parts, self.command_history = self.get_input(self.command_history, [n for n in command_functions.keys()], return_updated_history=True)
 			self.command_history.insert(0, command_parts)
@@ -611,6 +621,12 @@ def main():
 		log("Your SSH Host Key is invalid, please add a valid key to keys/private.key", type=LogType.ERROR)
 		log("You can regenerate one (On MacOS and Linux) using: [ssh-keygen -t rsa -m PEM -f keys/private.key]")
 		raise KeyboardInterrupt
+
+	# ----- START OF CUSTOM INITIALIZATION CODE ----- #
+
+
+
+	# -----  END OF CUSTOM INITIALIZATION CODE  ----- #
 
 	log(f"Server initialization completed in {round(time.perf_counter() - start_time, 3)} seconds")
 	log("Listening for connections from clients")
