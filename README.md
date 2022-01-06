@@ -178,7 +178,7 @@ Obviously, these four locations are not the only places where you may insert you
 
 ## Overview of the Entire Program
 
-This is a detailed explanation of the way that the program works, so that if you need to heavil modify the code for your own needs, you can do so. The code explanation is split up in the order that the code is executed.
+This is a detailed explanation of the way that the program works, so that if you need to heavily modify the code for your own needs, you can do so. The code explanation is split up in the order that the code is executed.
 
 ### Preinitialization
 
