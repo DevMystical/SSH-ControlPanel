@@ -315,82 +315,82 @@ class SSHControlPanelClient(threading.Thread):
 		self.command_history = []
 		permissions_level = PermissionsLevel.NORMAL if not username == "root" else PermissionsLevel.ROOT
 
+		command_functions = {}
+
+		def command(description, names, permissions_level=PermissionsLevel.NORMAL):
+			def command_func_inner(func):
+				for name in names:
+					command_functions[name] = (func, description, permissions_level)
+			return command_func_inner
+
+		@command("Clear the terminal window", ["clear", "cls", "c"])
+		def _clear():
+			self.clear_terminal()
+
+		@command("Add a new user to the system", ["adduser", "useradd", "newuser"], PermissionsLevel.ROOT)
+		def _adduser():
+			new_username = self.prompt("\r Username: ")
+			new_password = self.prompt("\r Password: ")
+			if self.database.user_exists(new_username):
+				self.send(" That username is already in use.\r\n")
+			else:
+				self.database.add_new_user(new_username, new_password)
+				self.send(" New user created successfully!\r\n")
+
+		@command("Delete an existing user from the system", ["removeuser", "userremove", "remove", "deluser"], PermissionsLevel.ROOT)
+		def _removeuser():
+			target_username = self.prompt("\r Username: ")
+			if self.database.user_exists(target_username):
+				if target_username == "root":
+					self.send(" You cannot delete the root user. To regenerate the password for root, use the command 'rootpassword'.\r\n")
+				else:
+					self.database.remove_user(target_username)
+					self.send(" Removed user successfully!\r\n")
+			else:
+				self.send(" That user does not exist.\r\n")
+
+		@command("Regenerate the password for the root account", ["rootpassword", "rootpass", "rootregen"], PermissionsLevel.ROOT)
+		def _rootpassword():
+			try:
+				confirmation = self.yes_no_prompt(" Are you sure you want to do this? You will be logged out and have to retrieve the new password from logs/root_passwords.log (Y/N): ")
+				if confirmation:
+					self.database.regenerate_root_password()
+					return CommandReturnAction.BREAK
+			except:
+				self.send(" Please give either 'y' or 'n' as a choice.\r\n")
+
+		@command("Change the password of a user", ["updatepassword", "userpassword"], PermissionsLevel.ROOT)
+		def _updatepassword():
+			target_username = self.prompt("\r Username: ")
+			new_password = self.prompt("\r Password: ")
+			c_new_password = self.prompt("\r Confirm Password: ")
+			if self.database.user_exists(target_username):
+				if not new_password == c_new_password:
+					self.send(" Passwords do not match, please try again.\r\n")
+				else:
+					if target_username == "root":
+						self.send(" You cannot update the root password. Please regenerate it using 'rootpassword'.\r\n")
+					else:
+						self.database.set_user_password(target_username, new_password)
+						self.send(" Password updated successfully.\r\n")
+			else:
+				self.send(" That user does not exist.\r\n")
+
+		@command("Log out of your current session", ["logout", "exit", "disconnect", "dc"])
+		def _logout():
+			return CommandReturnAction.BREAK
+
+		# ----- START OF CUSTOM COMMANDS ----- #
+
+
+
+
+
+		# -----  END OF CUSTOM COMMANDS  ----- #
+
 		while True:
 			title = TERMINAL_TITLE_BAR.replace("$user", username).replace("$ip", self.ip).replace("$sid", str(self.session_id))
 			self.send(f'\x1b]0;{title}\x07 [{username}@{self.ip}] > ')
-
-			command_functions = {}
-
-			def command(description, names, permissions_level=PermissionsLevel.NORMAL):
-				def command_func_inner(func):
-					for name in names:
-						command_functions[name] = (func, description, permissions_level)
-				return command_func_inner
-
-			@command("Clear the terminal window", ["clear", "cls", "c"])
-			def _clear():
-				self.clear_terminal()
-
-			@command("Add a new user to the system", ["adduser", "useradd", "newuser"], PermissionsLevel.ROOT)
-			def _adduser():
-				new_username = self.prompt("\r Username: ")
-				new_password = self.prompt("\r Password: ")
-				if self.database.user_exists(new_username):
-					self.send(" That username is already in use.\r\n")
-				else:
-					self.database.add_new_user(new_username, new_password)
-					self.send(" New user created successfully!\r\n")
-
-			@command("Delete an existing user from the system", ["removeuser", "userremove", "remove", "deluser"], PermissionsLevel.ROOT)
-			def _removeuser():
-				target_username = self.prompt("\r Username: ")
-				if self.database.user_exists(target_username):
-					if target_username == "root":
-						self.send(" You cannot delete the root user. To regenerate the password for root, use the command 'rootpassword'.\r\n")
-					else:
-						self.database.remove_user(target_username)
-						self.send(" Removed user successfully!\r\n")
-				else:
-					self.send(" That user does not exist.\r\n")
-
-			@command("Regenerate the password for the root account", ["rootpassword", "rootpass", "rootregen"], PermissionsLevel.ROOT)
-			def _rootpassword():
-				try:
-					confirmation = self.yes_no_prompt(" Are you sure you want to do this? You will be logged out and have to retrieve the new password from logs/root_passwords.log (Y/N): ")
-					if confirmation:
-						self.database.regenerate_root_password()
-						return CommandReturnAction.BREAK
-				except:
-					self.send(" Please give either 'y' or 'n' as a choice.\r\n")
-
-			@command("Change the password of a user", ["updatepassword", "userpassword"], PermissionsLevel.ROOT)
-			def _updatepassword():
-				target_username = self.prompt("\r Username: ")
-				new_password = self.prompt("\r Password: ")
-				c_new_password = self.prompt("\r Confirm Password: ")
-				if self.database.user_exists(target_username):
-					if not new_password == c_new_password:
-						self.send(" Passwords do not match, please try again.\r\n")
-					else:
-						if target_username == "root":
-							self.send(" You cannot update the root password. Please regenerate it using 'rootpassword'.\r\n")
-						else:
-							self.database.set_user_password(target_username, new_password)
-							self.send(" Password updated successfully.\r\n")
-				else:
-					self.send(" That user does not exist.\r\n")
-
-			@command("Log out of your current session", ["logout", "exit", "disconnect", "dc"])
-			def _logout():
-				return CommandReturnAction.BREAK
-
-			# ----- START OF CUSTOM COMMANDS ----- #
-
-
-
-
-
-			# -----  END OF CUSTOM COMMANDS  ----- #
 
 			command_parts, self.command_history = self.get_input(self.command_history, [n for n in command_functions.keys()], return_updated_history=True)
 			self.command_history.insert(0, command_parts)

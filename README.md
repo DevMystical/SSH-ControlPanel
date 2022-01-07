@@ -220,3 +220,15 @@ The function `process_ssh_client()` sets up the entire SSH process, and by the t
 The `SSHServerEmulator` takes care of getting the username and password from the client. Inside of `client_login_sequence()`, a new `SSHPanelDatabase` object is created. Each client has their own database class, and it is initialized with their username, which will be set to the variable `database.user`. The database will check the login credentials and set the variable `login_success` to `True` if the user has authenticated and `False` if the username/password combination was invalid. If the user is authenticated, `kill_socket_immediately` is set to `False` and the user is added to the list of connected clients. Then, the `main_loop()` function is called. Once this function returns, the user's session will be removed from the list of connected clients and `kill_socket_immediately` is set back to `True`. If the user did not authenticate, they will be shown the message in `LOGIN_FAILED` and then disconnected after two seconds. Regardless of login status, the connection will be terminated by the `kill_connection()` method.
 
 ### Client Frontend
+
+The main user interface takes place within the `main_loop()` function. The value of `command_history` is set to an empty list. Every command that is executed will be added to this list. `permissions_level` is also set, which determines what the user will be allowed to do based on their username. By default, it just checks if `username == "root"`, and sets `permissions_level` to `PermissionsLevel.ROOT` if it is. The variable `command_functions` is defined and set to an empty dictionary. The `command()` decorator will add functions to this dictionary. Each command defines a `description`, which is optional and may be implemented later for a help menu system, `names`, which are the commands that can be used to call the function, and the `permissions_level` which defaults to `PermissionsLevel.NORMAL`. The command function looks like this:
+
+```py
+def command(description, names, permissions_level=PermissionsLevel.NORMAL):
+    def command_func_inner(func):
+        for name in names:
+            command_functions[name] = (func, description, permissions_level)
+    return command_func_inner
+```
+
+For each of the names or aliases given, the key for the string in `command_functions` will be set to a tuple containing the function, its description, and its required permissions level. Commands are then defined and the dictionary of command functions is constructed. This dictionary will later be used to handle commands dispatched by the user.
