@@ -98,7 +98,7 @@ These database functions are available at any point inside of `SSHControlPanelCl
 | `set_user_password(self, username: str, password: str) -> None` | Changes the password for an existing user, which is the `username` argument. `password` should be the new plaintext password with no hashing. |
 | `add_new_user(self, username: str, password: str) -> None` | Adds a new user account with the given `username` and `password` with no hashing. |
 | `remove_user(self, username: str) -> None` | Removes the user with a username matching `username`. |
-| `log_login(self, username: str, ip: str, port: int | str) -> None` | By default, this function only logs the login to a file. However, if you want a login history table for your database then you can implement that here. |
+| `log_login(self, username: str, ip: str, port: int \| str) -> None` | By default, this function only logs the login to a file. However, if you want a login history table for your database then you can implement that here. |
 | `user_exists(self, username: str) -> bool` | Returns `True` if the username is the name of a registered user. |
 | `__user_exists(self, username: str) -> bool` | Has the exact same functionality as the previous function, but does not lock any threads and should be used strictly by other database functions. |
 
